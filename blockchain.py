@@ -111,24 +111,28 @@ class Blockchain:
         """Calculate and return the balance for a participant.
         """
         participant = self.hosting_node
-        # Fetch a list of all sent coin amounts for the given person (empty lists are returned if the person was NOT the sender)
-        # This fetches sent amounts of transactions that were already included in blocks of the blockchain
-        tx_sender = [[tx.amount for tx in block.transactions if tx.sender == participant and tx.product_name == product_name] for block in self.__chain]
-        # Fetch a list of all sent coin amounts for the given person (empty lists are returned if the person was NOT the sender)
-        # This fetches sent amounts of open transactions (to avoid double spending)
-        open_tx_sender = [tx.amount
-                          for tx in self.__open_transactions if tx.sender == participant and tx.product_name == product_name]
-        tx_sender.append(open_tx_sender)
-        # print(tx_sender)
-        amount_sent = reduce(lambda tx_sum, tx_amt: tx_sum + sum(tx_amt)
-                             if len(tx_amt) > 0 else tx_sum + 0, tx_sender, 0)
-        # This fetches received coin amounts of transactions that were already included in blocks of the blockchain
-        # We ignore open transactions here because you shouldn't be able to spend coins before the transaction was confirmed + included in a block
-        tx_recipient = [[tx.amount for tx in block.transactions if tx.recipient == participant and tx.product_name == product_name] for block in self.__chain]
-        amount_received = reduce(lambda tx_sum, tx_amt: tx_sum + sum(tx_amt)
-                                 if len(tx_amt) > 0 else tx_sum + 0, tx_recipient, 0)
-        # Return the total balance
-        return amount_received - amount_sent
+        print(f"participant {participant}")
+        if participant == None:
+            return None
+        else:
+            # Fetch a list of all sent coin amounts for the given person (empty lists are returned if the person was NOT the sender)
+            # This fetches sent amounts of transactions that were already included in blocks of the blockchain
+            tx_sender = [[tx.amount for tx in block.transactions if tx.sender == participant and tx.product_name == product_name] for block in self.__chain]
+            # Fetch a list of all sent coin amounts for the given person (empty lists are returned if the person was NOT the sender)
+            # This fetches sent amounts of open transactions (to avoid double spending)
+            open_tx_sender = [tx.amount
+                            for tx in self.__open_transactions if tx.sender == participant and tx.product_name == product_name]
+            tx_sender.append(open_tx_sender)
+            # print(tx_sender)
+            amount_sent = reduce(lambda tx_sum, tx_amt: tx_sum + sum(tx_amt)
+                                if len(tx_amt) > 0 else tx_sum + 0, tx_sender, 0)
+            # This fetches received coin amounts of transactions that were already included in blocks of the blockchain
+            # We ignore open transactions here because you shouldn't be able to spend coins before the transaction was confirmed + included in a block
+            tx_recipient = [[tx.amount for tx in block.transactions if tx.recipient == participant and tx.product_name == product_name] for block in self.__chain]
+            amount_received = reduce(lambda tx_sum, tx_amt: tx_sum + sum(tx_amt)
+                                    if len(tx_amt) > 0 else tx_sum + 0, tx_recipient, 0)
+            # Return the total balance
+            return amount_received - amount_sent
 
     def get_last_blockchain_value(self):
         """ Returns the last value of the current blockchain. """
@@ -164,8 +168,7 @@ class Blockchain:
         """Create a new block and add open transactions to it."""
         # Fetch the currently last block of the blockchain
         if self.hosting_node == None:
-            print("Error 1")
-            return False 
+            return None 
         last_block = self.__chain[-1]
         # Hash the last block (=> to be able to compare it to the stored hash value)
         hashed_block = hash_block(last_block)
@@ -178,12 +181,11 @@ class Blockchain:
         copied_transactions = self.__open_transactions[:]
         for tx in copied_transactions:
             if not Wallet.verify_transaction(tx):
-                print("[Error] 2")
-                return False
+                return None
         # [Winston] 
         # copied_transactions.append(reward_transaction)
         block = Block(len(self.__chain), hashed_block, copied_transactions, proof)
         self.__chain.append(block)
         self.__open_transactions = []
         self.save_data()
-        return True
+        return block

@@ -2,3 +2,4 @@
 *.pyo
 env
 blockchain.txt
+wallet.txt
