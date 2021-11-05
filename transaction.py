@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 from utility.printable import Printable
 
+
 class Transaction(Printable):
     """A transaction which can be added to a block in the blockchain.
 
@@ -11,12 +12,25 @@ class Transaction(Printable):
         :signature: The signature of the transaction.
         :amount: The amount of coins sent.
     """
-    def __init__(self, sender, recipient, signature, amount):
+
+    def __init__(self, sender, recipient, signature, amount, product_name, price):
+        # [sender] sells [amount] of [product_name] to [recipient] for [price]
         self.sender = sender
-        self.recipient = recipient
         self.amount = amount
+        self.product_name = product_name
+        self.recipient = recipient
+        self.price = price
+
         self.signature = signature
 
     def to_ordered_dict(self):
         """Converts this transaction into a (hashable) OrderedDict."""
-        return OrderedDict([('sender', self.sender), ('recipient', self.recipient), ('amount', self.amount)])
+        return OrderedDict(
+            [
+                ("sender", self.sender),
+                ("amount", self.amount),
+                ("product_name", self.product_name),
+                ("recipient", self.recipient),
+                ("price", self.price),
+            ]
+        )

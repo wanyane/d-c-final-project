@@ -62,8 +62,7 @@ class Blockchain:
                 # We need to convert  the loaded data because Transactions should use OrderedDict
                 updated_blockchain = []
                 for block in blockchain:
-                    converted_tx = [Transaction(
-                        tx['sender'], tx['recipient'], tx['signature'], tx['amount']) for tx in block['transactions']]
+                    converted_tx = [Transaction(tx['sender'], tx['recipient'], tx['signature'], tx['amount'], tx['product_name'], tx['price']) for tx in block['transactions']]
                     updated_block = Block(
                         block['index'], block['previous_hash'], converted_tx, block['proof'], block['timestamp'])
                     updated_blockchain.append(updated_block)
@@ -72,8 +71,7 @@ class Blockchain:
                 # We need to convert  the loaded data because Transactions should use OrderedDict
                 updated_transactions = []
                 for tx in open_transactions:
-                    updated_transaction = Transaction(
-                        tx['sender'], tx['recipient'], tx['signature'], tx['amount'])
+                    updated_transaction = Transaction(tx['sender'], tx['recipient'], tx['signature'], tx['amount'], tx['product_name'], tx['price'])
                     updated_transactions.append(updated_transaction)
                 self.__open_transactions = updated_transactions
         except (IOError, IndexError):
@@ -109,26 +107,24 @@ class Blockchain:
             proof += 1
         return proof
 
-    def get_balance(self):
+    def get_product_stock(self, product_name):
         """Calculate and return the balance for a participant.
         """
         participant = self.hosting_node
         # Fetch a list of all sent coin amounts for the given person (empty lists are returned if the person was NOT the sender)
         # This fetches sent amounts of transactions that were already included in blocks of the blockchain
-        tx_sender = [[tx.amount for tx in block.transactions
-                      if tx.sender == participant] for block in self.__chain]
+        tx_sender = [[tx.amount for tx in block.transactions if tx.sender == participant and tx.product_name == product_name] for block in self.__chain]
         # Fetch a list of all sent coin amounts for the given person (empty lists are returned if the person was NOT the sender)
         # This fetches sent amounts of open transactions (to avoid double spending)
         open_tx_sender = [tx.amount
-                          for tx in self.__open_transactions if tx.sender == participant]
+                          for tx in self.__open_transactions if tx.sender == participant and tx.product_name == product_name]
         tx_sender.append(open_tx_sender)
-        print(tx_sender)
+        # print(tx_sender)
         amount_sent = reduce(lambda tx_sum, tx_amt: tx_sum + sum(tx_amt)
                              if len(tx_amt) > 0 else tx_sum + 0, tx_sender, 0)
         # This fetches received coin amounts of transactions that were already included in blocks of the blockchain
         # We ignore open transactions here because you shouldn't be able to spend coins before the transaction was confirmed + included in a block
-        tx_recipient = [[tx.amount for tx in block.transactions
-                         if tx.recipient == participant] for block in self.__chain]
+        tx_recipient = [[tx.amount for tx in block.transactions if tx.recipient == participant and tx.product_name == product_name] for block in self.__chain]
         amount_received = reduce(lambda tx_sum, tx_amt: tx_sum + sum(tx_amt)
                                  if len(tx_amt) > 0 else tx_sum + 0, tx_recipient, 0)
         # Return the total balance
@@ -144,7 +140,8 @@ class Blockchain:
     # One required one (transaction_amount) and one optional one (last_transaction)
     # The optional one is optional because it has a default value => [1]
 
-    def add_transaction(self, recipient, sender, signature, amount=1.0):
+    # [Winston]def add_transaction(self, recipient, sender, signature, amount=1.0, product_name, price):
+    def add_transaction(self, recipient, sender, signature, amount, product_name, price):
         """ Append a new value as well as the last blockchain value to the blockchain.
 
         Arguments:
@@ -152,45 +149,40 @@ class Blockchain:
             :recipient: The recipient of the coins.
             :amount: The amount of coins sent with the transaction (default = 1.0)
         """
-        # transaction = {
-        #     'sender': sender,
-        #     'recipient': recipient,
-        #     'amount': amount
-        # }
+
         if self.hosting_node == None:
             return False
-        transaction = Transaction(sender, recipient, signature, amount)
-        if Verification.verify_transaction(transaction, self.get_balance):
+        transaction = Transaction(sender, recipient, signature, amount, product_name, price)
+        if Verification.verify_transaction(transaction, self.get_product_stock):
             self.__open_transactions.append(transaction)
             self.save_data()
             return True
+        print("[Error] blockchain.py -> add_transaction return false")
         return False
 
     def mine_block(self):
         """Create a new block and add open transactions to it."""
         # Fetch the currently last block of the blockchain
         if self.hosting_node == None:
-            return False
+            print("Error 1")
+            return False 
         last_block = self.__chain[-1]
         # Hash the last block (=> to be able to compare it to the stored hash value)
         hashed_block = hash_block(last_block)
         proof = self.proof_of_work()
         # Miners should be rewarded, so let's create a reward transaction
-        # reward_transaction = {
-        #     'sender': 'MINING',
-        #     'recipient': owner,
-        #     'amount': MINING_REWARD
-        # }
-        reward_transaction = Transaction('MINING', self.hosting_node, '', MINING_REWARD)
+        # [Winston] 
+        # reward_transaction = Transaction('MINING', self.hosting_node, '', MINING_REWARD, "apple", 0)
         # Copy transaction instead of manipulating the original open_transactions list
         # This ensures that if for some reason the mining should fail, we don't have the reward transaction stored in the open transactions
         copied_transactions = self.__open_transactions[:]
         for tx in copied_transactions:
             if not Wallet.verify_transaction(tx):
+                print("[Error] 2")
                 return False
-        copied_transactions.append(reward_transaction)
-        block = Block(len(self.__chain), hashed_block,
-                      copied_transactions, proof)
+        # [Winston] 
+        # copied_transactions.append(reward_transaction)
+        block = Block(len(self.__chain), hashed_block, copied_transactions, proof)
         self.__chain.append(block)
         self.__open_transactions = []
         self.save_data()

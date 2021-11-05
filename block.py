@@ -18,5 +18,13 @@ class Block(Printable):
         self.timestamp = time
         self.transactions = transactions
         self.proof = proof
-
+    def __repr__(self):
+        transactions_str = ""
+        for i, t in enumerate(self.transactions):
+            transactions_str += f"\t\tt_idx: {i}\n\t\tsender: {t.sender}\n\t\trecipent: {t.recipient}\n\t\tamount: {t.amount}\n\t\tproduct_name: {t.product_name}\n\t\tprice: {t.price}\n\n"
+        
+        return f"b_index: {self.index}\n\
+                 previous hash: {self.previous_hash}\n\
+                 self.proof: {self.proof}\n\
+                 transactions: \n\n{transactions_str}\n"
 
