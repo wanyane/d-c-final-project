@@ -54,7 +54,7 @@ class Verification:
         """
         # if sender == nature, than there is no need to check for tht product stock
         if check_funds and transaction.sender != Wallet.nature_public_key:
-            sender_product_stock = get_product_stock(transaction.product_name)
+            sender_product_stock = get_product_stock(transaction.sender, transaction.product_name)
             return sender_product_stock >= transaction.amount and Wallet.verify_transaction(
                 transaction
             )
